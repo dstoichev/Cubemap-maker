@@ -12,6 +12,8 @@ The result is saved in the source folder.
 
 The JPEG images names must have the same base name with **_r**, **_l**, **_u**, **_d**, **_b** and **_f** suffixes for the **right**, **left**, **up**, **down**, **back** and **front** squares respectively.
 
+![Monoscopic Cubemap Layout explained](VR_Layout_Explained.jpg)
+
 The result is a JPEG image whose name is the base name with **_cubemap** suffix.
 
 # To run the script:
