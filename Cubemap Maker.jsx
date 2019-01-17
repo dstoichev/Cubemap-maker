@@ -961,7 +961,7 @@
     CubemapMakerUi = function(opts) {
         this.bounds = "x: 200, y: 200, width: 650, height: 420";
         
-        this.docNote = ''.concat("\n", 'Processes the building images of a monoscopic VR cubemap strip located in a folder.', "\n\n",
+        this.docNote = ''.concat("\n", 'Processes the building images of a monoscopic VR cubemap strip located in a folder.', "\n",
                                  'Flips the images and concats them in a strip.', "\n",
                                  'Saves the result to the same folder.');
         
@@ -978,7 +978,7 @@
         browseForSourceFolder: function() {
             var def = this.opts.soucePath || Folder.current;
       
-            var folder = Stdlib.selectFolder("Source folder", def);
+            var folder = Stdlib.selectFolder("Select source folder", def);
             if (folder) {
                 this.preferencesWin.settingsPnl.souceFolderGroup.souceFolder.text = folder.fsName;
                 this.opts.soucePath = folder.fsName;
@@ -1006,7 +1006,7 @@
                 }, \
                 settingsPnl: Panel { orientation: 'column',\
                     souceFolderGroup: Group{orientation: 'row', alignment: 'left', \
-                        st: StaticText { alignment: ['left', 'center'], text: 'Output folder:' }, \
+                        st: StaticText { alignment: ['left', 'center'], text: 'Source folder:' }, \
                         souceFolder: EditText {characters: 41, text: '"+this.escapePath( this.opts.soucePath )+"'}, \
                         souceFolderBrowseBtn: Button { text:'...', size: [25, 20], properties:{name:'selectFolder'} } \
                     } \
