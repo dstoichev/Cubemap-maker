@@ -961,13 +961,11 @@
     CubemapMakerUi = function(opts) {
         this.bounds = "x: 200, y: 200, width: 650, height: 420";
         
-        this.docNote = ''.concat("\n", 'Processes the building images of a monoscopic VR cubemap strip located in a folder.', "\n",
-                                 'Flips the images and concats them in a strip.', "\n",
+        this.docNote = ''.concat("\n", 'Processes the building images of a monoscopic VR cubemap strip located in a folder.',
+                                 ' Flips the images and concats them in a strip.', "\n",
                                  'Saves the result to the same folder.');
         
         this.opts = opts;
-        
-        this.defaultSmallSizeOutputImageLongerSide = opts.smallSizeOutputImageLongerSide;
         
         this.title = 'Please select source folder';
         
@@ -979,7 +977,7 @@
             var def = this.opts.soucePath || Folder.current;
       
             var folder = Stdlib.selectFolder("Select source folder", def);
-            if (folder) {
+            if (folder) { 
                 this.preferencesWin.settingsPnl.souceFolderGroup.souceFolder.text = folder.fsName;
                 this.opts.soucePath = folder.fsName;
             }
@@ -1156,9 +1154,7 @@
         },
                 
         main: function() {
-            var docs = app.documents,
-                docsCount = 20, //docs.length,
-                currentActive = app.activeDocument,                
+            var docsCount = 20,
                 percentComplete = 1,
                 progressWin;
             
@@ -1167,7 +1163,9 @@
                 
                 for (var i = 0; i < docsCount; i++)
                 {
-                    this.progressUi.updateProgress( percentComplete, doc.name );
+                    $.sleep(750);
+                    
+                    this.progressUi.updateProgress( percentComplete, 'Hello world ' + i );
                     
                     percentComplete = parseInt((i + 1) * 100 / docsCount, 10);
                     this.progressUi.updateProgress( percentComplete );
@@ -1175,8 +1173,6 @@
                     this.checkCancelledByClient();
                 }
             } catch (e) {
-                app.activeDocument = doc; // must be the correct active document before attempting revert on Mac
-                Stdlib.revertToSnapshot(doc, snapshotName);
                 
                 var msgToLog = '',
                     msgForUser = 'A problem occurred.';
@@ -1184,17 +1180,15 @@
                     // no need to log error and direct user to error log file
                     msgForUser = 'You cancelled Cubemap Maker execution.';
                     var isUserCancelled = true;
-                    this.addWarningToAlertText(doc.name, msgForUser, isUserCancelled);
+                    this.addWarningToAlertText('Hi there 1', msgForUser, isUserCancelled);
                 }
                 else {
-                    this.addWarningToAlertText(doc.name, msgForUser);
+                    this.addWarningToAlertText('Hi there 2', msgForUser);
                     Stdlib.logException(e, msgToLog, false);
                 }
             }
             
             this.progressUi.closeProgress();
-            
-            app.activeDocument = currentActive;
             
             if (this.alertTextHasWarnings) {
                 var moreInfoFileStr = ''.concat("More information can be found in file:\n", "    ", Stdlib.log.fptr.toUIString());
