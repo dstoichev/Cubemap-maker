@@ -1046,6 +1046,7 @@
         this.alertTextHasWarnings = false;
         
         this.cancelledByClientMessage = 'CancelledByClient';
+        this.cancelledByInvalidInputPrefix = 'II:';
         
         this.leftEyeResultFolderName = 'left';
             
@@ -1067,7 +1068,9 @@
         this.saveNames = new Array();
         
         this.saveOptions = new JPEGSaveOptions();
-        this.saveOptions.quality = 12;                
+        this.saveOptions.quality = 12;
+        
+        this.sourceFiles = null;
         
         this.ui = null;
     }
@@ -1159,6 +1162,8 @@
                 progressWin;
             
             try {
+                this.getSourceFiles();
+                
                 this.progressUi = new CubemapMakerProgressIndicationUi();
                 
                 for (var i = 0; i < docsCount; i++)
@@ -1176,7 +1181,13 @@
                 
                 var msgToLog = '',
                     msgForUser = 'A problem occurred.';
-                if (this.cancelledByClientMessage === e.message) {
+                    
+                if (this.cancelledByInvalidInputPrefix === e.message.substring(0, this.cancelledByInvalidInputPrefix.length)) {
+                    msgForUser = e.message.substring(this.cancelledByInvalidInputPrefix.length);
+                    var isUserCancelled = true;
+                    this.addWarningToAlertText('Invalid input', msgForUser, isUserCancelled);
+                }
+                else if (this.cancelledByClientMessage === e.message) {
                     // no need to log error and direct user to error log file
                     msgForUser = 'You cancelled Cubemap Maker execution.';
                     var isUserCancelled = true;
@@ -1188,14 +1199,29 @@
                 }
             }
             
-            this.progressUi.closeProgress();
+            if (this.progressUi) {
+                this.progressUi.closeProgress();
+            }
             
             if (this.alertTextHasWarnings) {
                 var moreInfoFileStr = ''.concat("More information can be found in file:\n", "    ", Stdlib.log.fptr.toUIString());
                 this.alertText = ''.concat(this.alertText, "\n\n", 'Some documents were not processed correctly.', "\n\n", moreInfoFileStr);
             }
             alert(this.alertText);
-        }        
+        },
+        
+        getSourceFiles: function() {
+            var sourceFolder = new Folder(this.opts.soucePath),
+                itemsInsideArray = sourceFolder.getFiles();
+                
+            if (0 === itemsInsideArray.length) {
+                this.throwInvalidInputException('Source folder is empty.')
+            }
+        },
+        
+        throwInvalidInputException: function(messageForUser) {
+            throw new Error(this.cancelledByInvalidInputPrefix + messageForUser);
+        }
     };
     
     
