@@ -1060,7 +1060,6 @@
         this.outputFilesFlipDirections = [Direction.HORIZONTAL, Direction.HORIZONTAL, Direction.VERTICAL,
                                           Direction.VERTICAL, Direction.HORIZONTAL, Direction.HORIZONTAL];
         this.outputFileName = 'pano';
-        this.inputFilesPostfixes = ['_r', '_l', '_u', '_d', '_b', '_f'];
         this.outputResultBasePath = '';
         
         this.progressUi = null;
@@ -1070,7 +1069,9 @@
         this.saveOptions = new JPEGSaveOptions();
         this.saveOptions.quality = 12;
         
-        this.sourceFiles = null;
+        this.sourceFiles = {};
+        this.sourceFilesSuffixes = new Array('r', 'l', 'u', 'd', 'b', 'f');
+        this.sourceFilesExtension = '.jpg';
         
         this.ui = null;
     }
@@ -1157,7 +1158,7 @@
         },
                 
         main: function() {
-            var docsCount = 20,
+            var docsCount = 6,
                 percentComplete = 1,
                 progressWin;
             
@@ -1166,9 +1167,11 @@
                 
                 this.progressUi = new CubemapMakerProgressIndicationUi();
                 
-                for (var i = 0; i < docsCount; i++)
+                var suffix;
+                for (var i = 0; i < this.sourceFilesSuffixes.length; i++)
                 {
-                    $.sleep(750);
+                    suffix = this.sourceFilesSuffixes[i];
+                    $.sleep(500);
                     
                     this.progressUi.updateProgress( percentComplete, 'Hello world ' + i );
                     
@@ -1215,7 +1218,57 @@
                 itemsInsideArray = sourceFolder.getFiles();
                 
             if (0 === itemsInsideArray.length) {
-                this.throwInvalidInputException('Source folder is empty.')
+                this.throwInvalidInputException('Source folder is empty.');
+            }
+            
+            if (6 !== itemsInsideArray.length) {
+                this.throwInvalidInputException('There must be exactly 6 image files inside source folder.');
+            }
+            
+            var item,
+                joinedSuffixes = this.sourceFilesSuffixes.join('|'),
+                regexpString = '(_(' + joinedSuffixes + ')\\' + this.sourceFilesExtension + ')$',
+                re = RegExp(regexpString, 'gi'),
+                foundCounter = 0,
+                result, cubeSide;
+                
+            for (var i = 0; i < itemsInsideArray.length; i++)
+            {
+                item = itemsInsideArray[i];
+                if (item instanceof File) {
+                    result = re.exec(item.name);                    
+                    if (null !== result) {
+                        cubeSide = result[2];
+                        if ('undefined' === typeof this.sourceFiles[cubeSide]) {
+                            this.sourceFiles[cubeSide] = item;
+                            foundCounter++;
+                        }
+                    }
+                    re = null;
+                    re = RegExp(regexpString, 'gi');
+                }
+            }
+            
+            if (this.sourceFilesSuffixes.length !== foundCounter) {
+                var verb = 'is',
+                    plural = '',
+                    missing = new Array(),
+                    suffix;
+                for (var i = 0; i < this.sourceFilesSuffixes.length; i++)
+                {
+                    suffix = this.sourceFilesSuffixes[i];
+                    if (!this.sourceFiles.hasOwnProperty(suffix)) {
+                        missing.push('_' + suffix);
+                    }
+                }
+                
+                if (1 < missing.length) {
+                    verb = 'are';
+                    plural = 's';
+                }
+                
+                var msg = ''.concat('The ', missing.join(' '), ' image', plural, ' ', verb, ' missing.');
+                this.throwInvalidInputException(msg);
             }
         },
         
