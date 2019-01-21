@@ -1057,14 +1057,23 @@
         
         this.okTextlineFeed = "\n";        
         this.outputFileExtension = '.jpg';
-        this.outputFilesFlipDirections = [Direction.HORIZONTAL, Direction.HORIZONTAL, Direction.VERTICAL,
-                                          Direction.VERTICAL, Direction.HORIZONTAL, Direction.HORIZONTAL];
-        this.outputFileName = 'pano';
+        this.outputFilesFlipDirections = {
+            r : Direction.HORIZONTAL,
+            l : Direction.HORIZONTAL,
+            u : Direction.VERTICAL,
+            d : Direction.VERTICAL,
+            b : Direction.HORIZONTAL,
+            f : Direction.HORIZONTAL
+        };
+        this.outputFileName = '';
+        this.outputFileNameSuffix = '_cubemap';
         this.outputResultBasePath = '';
         
         this.progressUi = null;
         
         this.saveNames = new Array();
+        
+        this.squareSide = 0;
         
         this.saveOptions = new JPEGSaveOptions();
         this.saveOptions.quality = 12;
@@ -1072,6 +1081,8 @@
         this.sourceFiles = {};
         this.sourceFilesSuffixes = new Array('r', 'l', 'u', 'd', 'b', 'f');
         this.sourceFilesExtension = '.jpg';
+        
+        this.tempDocumentName = '';
         
         this.ui = null;
     }
@@ -1115,6 +1126,18 @@
             return result;
         },
         
+        closeCurrentOpen: function() {
+            var docs = app.documents,
+                docsCount = docs.length;
+            
+            if (0 < docsCount) {
+                for (var i = 0; i < docsCount; i++)
+                {
+                    docs[i].close(SaveOptions.DONOTSAVECHANGES);
+                }
+            }
+        },
+        
         /**
          * Copy Merged via ActionManager code
          */
@@ -1123,94 +1146,17 @@
             executeAction( idCpyM, undefined, DialogModes.NO );
         },
         
-        getSaveName: function(base) {
-            var current = base,
+        getSaveName: function(fileRef) {
+            var base = fileRef.name,
+                current = base,
                 counter = 1;
-            while (-1 !== this.saveNames.indexOf(current))
+            while (fileRef.exists)
             {
                 current = ''.concat(base, ' (', counter, ')');
                 counter++;
             }
             
-            // Remember
-            this.saveNames.push(current);
             return current;
-        },
-        
-        init: function() {
-            var originalRulerUnits = app.preferences.rulerUnits;
-            app.preferences.rulerUnits = Units.PIXELS;
-                        
-            try {
-                this.ui = new CubemapMakerUi(this.opts);
-                var win = this.ui.prepareWindow(),
-                    result = win.show();
-                
-                if (2 != result) {                    
-                    this.main();
-                }
-                
-            } catch (e) {
-                alert(e);
-            }
-            
-            app.preferences.rulerUnits = originalRulerUnits;            
-        },
-                
-        main: function() {
-            var docsCount = 6,
-                percentComplete = 1,
-                progressWin;
-            
-            try {
-                this.getSourceFiles();
-                
-                this.progressUi = new CubemapMakerProgressIndicationUi();
-                
-                var suffix;
-                for (var i = 0; i < this.sourceFilesSuffixes.length; i++)
-                {
-                    suffix = this.sourceFilesSuffixes[i];
-                    $.sleep(500);
-                    
-                    this.progressUi.updateProgress( percentComplete, 'Hello world ' + i );
-                    
-                    percentComplete = parseInt((i + 1) * 100 / docsCount, 10);
-                    this.progressUi.updateProgress( percentComplete );
-                                                            
-                    this.checkCancelledByClient();
-                }
-            } catch (e) {
-                
-                var msgToLog = '',
-                    msgForUser = 'A problem occurred.';
-                    
-                if (this.cancelledByInvalidInputPrefix === e.message.substring(0, this.cancelledByInvalidInputPrefix.length)) {
-                    msgForUser = e.message.substring(this.cancelledByInvalidInputPrefix.length);
-                    var isUserCancelled = true;
-                    this.addWarningToAlertText('Invalid input', msgForUser, isUserCancelled);
-                }
-                else if (this.cancelledByClientMessage === e.message) {
-                    // no need to log error and direct user to error log file
-                    msgForUser = 'You cancelled Cubemap Maker execution.';
-                    var isUserCancelled = true;
-                    this.addWarningToAlertText('Hi there 1', msgForUser, isUserCancelled);
-                }
-                else {
-                    this.addWarningToAlertText('Hi there 2', msgForUser);
-                    Stdlib.logException(e, msgToLog, false);
-                }
-            }
-            
-            if (this.progressUi) {
-                this.progressUi.closeProgress();
-            }
-            
-            if (this.alertTextHasWarnings) {
-                var moreInfoFileStr = ''.concat("More information can be found in file:\n", "    ", Stdlib.log.fptr.toUIString());
-                this.alertText = ''.concat(this.alertText, "\n\n", 'Some documents were not processed correctly.', "\n\n", moreInfoFileStr);
-            }
-            alert(this.alertText);
         },
         
         getSourceFiles: function() {
@@ -1238,6 +1184,10 @@
                 if (item instanceof File) {
                     result = re.exec(item.name);                    
                     if (null !== result) {
+                        if (null === this.outputFileName) {
+                            // get the base name of output result
+                            this.outputFileName = item.name.substring(0, result.index);
+                        }
                         cubeSide = result[2];
                         if ('undefined' === typeof this.sourceFiles[cubeSide]) {
                             this.sourceFiles[cubeSide] = item;
@@ -1270,6 +1220,99 @@
                 var msg = ''.concat('The ', missing.join(' '), ' image', plural, ' ', verb, ' missing.');
                 this.throwInvalidInputException(msg);
             }
+        },
+        
+        init: function() {
+            var originalRulerUnits = app.preferences.rulerUnits;
+            app.preferences.rulerUnits = Units.PIXELS;
+                        
+            try {
+                this.ui = new CubemapMakerUi(this.opts);
+                var win = this.ui.prepareWindow(),
+                    result = win.show();
+                
+                if (2 != result) {                    
+                    this.main();
+                }
+                
+            } catch (e) {
+                alert(e);
+            }
+            
+            app.preferences.rulerUnits = originalRulerUnits;            
+        },
+                
+        main: function() {
+            var docsCount = this.sourceFilesSuffixes.length,
+                percentComplete = 1,
+                progressWin;
+            
+            try {
+                this.getSourceFiles();
+                
+                this.progressUi = new CubemapMakerProgressIndicationUi();
+                
+                for (var i = 0; i < docsCount; i++)
+                {
+                    this.openSquare(i);
+                    
+                    this.progressUi.updateProgress( percentComplete, app.activeDocument.name );
+                    
+                    this.processCurrentSquare(i);
+                    
+                    percentComplete = parseInt((i + 1) * 100 / docsCount, 10);
+                    this.progressUi.updateProgress( percentComplete );
+                                                            
+                    this.checkCancelledByClient();
+                }
+            } catch (e) {
+                
+                var msgToLog = '',
+                    msgForUser = 'A problem occurred.';
+                    
+                if (this.cancelledByInvalidInputPrefix === e.message.substring(0, this.cancelledByInvalidInputPrefix.length)) {
+                    msgForUser = e.message.substring(this.cancelledByInvalidInputPrefix.length);
+                    var isUserCancelled = true;
+                    this.addWarningToAlertText('Invalid input', msgForUser, isUserCancelled);
+                }
+                else if (this.cancelledByClientMessage === e.message) {
+                    // no need to log error and direct user to error log file
+                    msgForUser = 'You cancelled Cubemap Maker execution.';
+                    var isUserCancelled = true;
+                    this.addWarningToAlertText('Hi there 1', msgForUser, isUserCancelled);
+                }
+                else {
+                    this.addWarningToAlertText('Hi there 2', msgForUser);
+                    Stdlib.logException(e, msgToLog, false);
+                }
+            }
+            
+            this.closeCurrentOpen();
+            
+            if (this.progressUi) {
+                this.progressUi.closeProgress();
+            }
+            
+            if (this.alertTextHasWarnings) {
+                var moreInfoFileStr = ''.concat("More information can be found in file:\n", "    ", Stdlib.log.fptr.toUIString());
+                this.alertText = ''.concat(this.alertText, "\n\n", 'Some documents were not processed correctly.', "\n\n", moreInfoFileStr);
+            }
+            alert(this.alertText);
+        },
+        
+        openOutputResultDocument: function() {
+            var now = new Date();
+            this.tempDocumentName = ''.concat('Temp-', this.outputFileName, this.outputFileNameSuffix, '-', now.valueOf());
+            
+            app.documents.add(this.squareSide, this.squareSide, 72, this.tempDocumentName, NewDocumentMode.RGB);            
+        },
+        
+        openSquare: function(index) {
+            var suffix = this.sourceFilesSuffixes[i];
+        },
+        
+        processCurrentSquare: function(index) {
+            var suffix = this.sourceFilesSuffixes[i];
         },
         
         throwInvalidInputException: function(messageForUser) {
