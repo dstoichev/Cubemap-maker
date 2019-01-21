@@ -974,12 +974,12 @@
 
     CubemapMakerUi.prototype = {
         browseForSourceFolder: function() {
-            var def = this.opts.soucePath || Folder.current;
+            var def = this.opts.sourcePath || Folder.current;
       
             var folder = Stdlib.selectFolder("Select source folder", def);
             if (folder) { 
-                this.preferencesWin.settingsPnl.souceFolderGroup.souceFolder.text = folder.fsName;
-                this.opts.soucePath = folder.fsName;
+                this.preferencesWin.settingsPnl.sourceFolderGroup.sourceFolder.text = folder.fsName;
+                this.opts.sourcePath = folder.fsName;
             }
         },
                 
@@ -1003,10 +1003,10 @@
                     }, \
                 }, \
                 settingsPnl: Panel { orientation: 'column',\
-                    souceFolderGroup: Group{orientation: 'row', alignment: 'left', \
+                    sourceFolderGroup: Group{orientation: 'row', alignment: 'left', \
                         st: StaticText { alignment: ['left', 'center'], text: 'Source folder:' }, \
-                        souceFolder: EditText {characters: 41, text: '"+this.escapePath( this.opts.soucePath )+"'}, \
-                        souceFolderBrowseBtn: Button { text:'...', size: [25, 20], properties:{name:'selectFolder'} } \
+                        sourceFolder: EditText {characters: 41, text: '"+this.escapePath( this.opts.sourcePath )+"'}, \
+                        sourceFolderBrowseBtn: Button { text:'...', size: [25, 20], properties:{name:'selectFolder'} } \
                     } \
                 }, \
                 btnGrp: Group { orientation:'row', alignment: 'right', \
@@ -1022,7 +1022,7 @@
             var settings = this.preferencesWin.settingsPnl;
             
             // Register event listeners that define the button behavior
-            settings.souceFolderGroup.souceFolderBrowseBtn.onClick = function() {
+            settings.sourceFolderGroup.sourceFolderBrowseBtn.onClick = function() {
                 that.browseForSourceFolder.call(that);
             };
                         
@@ -1051,7 +1051,7 @@
         this.leftEyeResultFolderName = 'left';
             
         this.opts = {
-            soucePath: Folder.myDocuments.fsName,
+            sourcePath: Folder.myDocuments.fsName,
             version: '1.0'
         };
         
@@ -1126,7 +1126,7 @@
             return result;
         },
         
-        closeCurrentOpen: function() {
+        closeAllCurrentlyOpen: function() {
             var docs = app.documents,
                 docsCount = docs.length;
             
@@ -1146,29 +1146,40 @@
             executeAction( idCpyM, undefined, DialogModes.NO );
         },
         
-        getSaveName: function(fileRef) {
-            var base = fileRef.name,
-                current = base,
+        /**
+         * Get file with unique name
+         *
+         * @param {String} path
+         * @param {String} name
+         * @param {String} extension
+         * @returns {File}
+         */
+        getFileToSaveWithCorrectName: function(path, name, extension) {
+            var currentName = name,
+                fullPath = ''.concat(path, '/', currentName, extension),
+                fileRef = new File(fullPath),
                 counter = 1;
             while (fileRef.exists)
             {
-                current = ''.concat(base, ' (', counter, ')');
+                currentName = ''.concat(name, ' (', counter, ')');
+                fullPath = ''.concat(path, '/', currentName, extension);
+                fileRef = new File(fullPath);
                 counter++;
             }
             
-            return current;
+            return fileRef;
         },
         
         getSourceFiles: function() {
-            var sourceFolder = new Folder(this.opts.soucePath),
+            var sourceFolder = new Folder(this.opts.sourcePath),
                 itemsInsideArray = sourceFolder.getFiles();
                 
             if (0 === itemsInsideArray.length) {
-                this.throwInvalidInputException('Source folder is empty.');
+                this.throwInvalidInputException('The source folder is empty.');
             }
             
-            if (6 !== itemsInsideArray.length) {
-                this.throwInvalidInputException('There must be exactly 6 image files inside source folder.');
+            if (6 > itemsInsideArray.length) {
+                this.throwInvalidInputException('There must be at least 6 image files inside the source folder.');
             }
             
             var item,
@@ -1184,7 +1195,7 @@
                 if (item instanceof File) {
                     result = re.exec(item.name);                    
                     if (null !== result) {
-                        if (null === this.outputFileName) {
+                        if ('' === this.outputFileName) {
                             // get the base name of output result
                             this.outputFileName = item.name.substring(0, result.index);
                         }
@@ -1245,7 +1256,8 @@
         main: function() {
             var docsCount = this.sourceFilesSuffixes.length,
                 percentComplete = 1,
-                progressWin;
+                progressWin,
+                nameOfCurrentlyProcessed = '';
             
             try {
                 this.getSourceFiles();
@@ -1254,7 +1266,7 @@
                 
                 for (var i = 0; i < docsCount; i++)
                 {
-                    this.openSquare(i);
+                    nameOfCurrentlyProcessed = this.openSquare(i);
                     
                     this.progressUi.updateProgress( percentComplete, app.activeDocument.name );
                     
@@ -1264,6 +1276,15 @@
                     this.progressUi.updateProgress( percentComplete );
                                                             
                     this.checkCancelledByClient();
+                    
+                    if ((docsCount - 1) === i) {
+                        var outputResultDocument = app.documents.getByName(this.tempDocumentName);
+                        nameOfCurrentlyProcessed = 'Output result';
+                        outputResultDocument.flatten();
+                        if (true === this.saveCubemap(outputResultDocument)) {
+                            this.alertText = ''.concat(this.alertText, 'Output result is saved', '.', this.okTextlineFeed);
+                        }
+                    }
                 }
             } catch (e) {
                 
@@ -1279,15 +1300,15 @@
                     // no need to log error and direct user to error log file
                     msgForUser = 'You cancelled Cubemap Maker execution.';
                     var isUserCancelled = true;
-                    this.addWarningToAlertText('Hi there 1', msgForUser, isUserCancelled);
+                    this.addWarningToAlertText(nameOfCurrentlyProcessed, msgForUser, isUserCancelled);
                 }
                 else {
-                    this.addWarningToAlertText('Hi there 2', msgForUser);
+                    this.addWarningToAlertText(nameOfCurrentlyProcessed, msgForUser);
                     Stdlib.logException(e, msgToLog, false);
                 }
             }
             
-            this.closeCurrentOpen();
+            this.closeAllCurrentlyOpen();
             
             if (this.progressUi) {
                 this.progressUi.closeProgress();
@@ -1304,17 +1325,114 @@
             var now = new Date();
             this.tempDocumentName = ''.concat('Temp-', this.outputFileName, this.outputFileNameSuffix, '-', now.valueOf());
             
-            app.documents.add(this.squareSide, this.squareSide, 72, this.tempDocumentName, NewDocumentMode.RGB);            
+            app.documents.add(6 * this.squareSide, this.squareSide, 72, this.tempDocumentName, NewDocumentMode.RGB);            
         },
         
+        /**
+         * @param {int} index
+         * @returns {String}
+         */
         openSquare: function(index) {
-            var suffix = this.sourceFilesSuffixes[i];
+            var suffix = this.sourceFilesSuffixes[index];
+            var fileRef = this.sourceFiles[suffix];
+            
+            if (fileRef.exists) {
+                app.open(fileRef);
+            }
+            else {
+                throw new Exception('Image file ' + fileRef.name + ' does not exists.');
+            }
+            
+            var current = app.activeDocument,
+                currentName = current.name,
+                currentHeight = getUnitValue(current.height),
+                currentWidth = getUnitValue(current.width);
+                
+            if (currentWidth !== currentHeight) {
+                this.throwInvalidInputException('Image file ' + fileRef.name + ' is not a square.');
+            }
+            
+            if (0 === index) {
+                var temp = app.activeDocument;
+                                
+                this.squareSide = currentHeight;
+                // Init the result document
+                this.openOutputResultDocument();
+                
+                app.activeDocument = temp;
+            }
+            else if (this.squareSide !== currentHeight) {
+                this.throwInvalidInputException('Building square ' + fileRef.name + ' has unexpected width.');
+            }
+            
+            return currentName;
         },
         
         processCurrentSquare: function(index) {
-            var suffix = this.sourceFilesSuffixes[i];
-        },
+            var suffix = this.sourceFilesSuffixes[index],
+                doc = app.activeDocument,
+                direction = this.outputFilesFlipDirections[suffix];
+                
+            doc.flipCanvas(direction);
+            doc.selection.selectAll();
+            if (1 < doc.layers.length) {
+                this.copyMerged();
+            }
+            else {
+                doc.selection.copy();
+            }
+                
+            var currentTopLeftX = index * this.squareSide,
+                topLeftY = 0,
+                region = new Array(new Array( currentTopLeftX, topLeftY ),
+                                   new Array( currentTopLeftX + this.squareSide, topLeftY ),
+                                   new Array( currentTopLeftX + this.squareSide, topLeftY + this.squareSide ),
+                                   new Array( currentTopLeftX, topLeftY + this.squareSide )),
+                outputResultDocument = app.documents.getByName(this.tempDocumentName);
+            
+            app.activeDocument = outputResultDocument;
+                    
+            outputResultDocument.selection.select(region, SelectionType.REPLACE);               
+            outputResultDocument.paste();
+            
+            this.alertText = ''.concat(this.alertText, doc.name, ' - OK.', this.okTextlineFeed);
+            doc.close(SaveOptions.DONOTSAVECHANGES);  
+        },        
         
+        /**
+         * Save the result cubemap to an image file
+         *
+         * @param {Document} doc
+         * @returns {boolean}
+         */
+        saveCubemap: function(doc) {
+            this.outputResultBasePath = this.opts.sourcePath;
+            var result = true,
+                file = this.getFileToSaveWithCorrectName(this.outputResultBasePath,
+                                                         this.outputFileName + this.outputFileNameSuffix,
+                                                         this.outputFileExtension);
+                
+            if (this.checkCancelledByClient(true)) {
+                doc.close(SaveOptions.DONOTSAVECHANGES);
+                throw new Error(this.cancelledByClientMessage);
+            }
+            
+            try {
+                doc.saveAs(file, this.saveOptions, true, Extension.LOWERCASE);
+            } catch (e) {
+                var warnText = 'Failed to save output image',
+                    msg = ''.concat('File save error: ', e.message, "\n", warnText, ': ', file.toUIString(), "\n");
+                
+                this.addWarningToAlertText('Output result', warnText + '.');
+                Stdlib.logException(e, msg, false);
+                result = false;
+            }
+            
+            // Close the temporary document
+            doc.close(SaveOptions.DONOTSAVECHANGES);
+            return result;
+        },
+
         throwInvalidInputException: function(messageForUser) {
             throw new Error(this.cancelledByInvalidInputPrefix + messageForUser);
         }
