@@ -1277,7 +1277,12 @@
         }
     };
     
+    if (0 === documents.length) {
+        var cm = new CubemapMaker();
+        cm.init();
+    }
+    else {
+        alert("Close all open documents before running this script.");
+    }
     
-    var cm = new CubemapMaker();
-    cm.init();
 })(); // Immediately-Invoked Function Expression (IIFE)
