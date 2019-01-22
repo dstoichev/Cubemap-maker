@@ -1048,7 +1048,7 @@
         this.cancelledByClientMessage = 'CancelledByClient';
         this.cancelledByInvalidInputPrefix = 'II:';
         
-        this.leftEyeResultFolderName = 'left';
+        this.nameOfCurrentlyProcessed = '';
             
         this.opts = {
             sourcePath: Folder.myDocuments.fsName,
@@ -1126,16 +1126,16 @@
             return result;
         },
         
-        closeAllCurrentlyOpen: function() {
+        closeAllCurrentlyOpen: function() {            
             var docs = app.documents,
                 docsCount = docs.length;
             
             if (0 < docsCount) {
-                for (var i = 0; i < docsCount; i++)
+                for (var i = docsCount-1; i >= 0; i--) // only this way works!
                 {
                     docs[i].close(SaveOptions.DONOTSAVECHANGES);
                 }
-            }
+            }            
         },
         
         /**
@@ -1256,8 +1256,7 @@
         main: function() {
             var docsCount = this.sourceFilesSuffixes.length,
                 percentComplete = 1,
-                progressWin,
-                nameOfCurrentlyProcessed = '';
+                progressWin;                
             
             try {
                 this.getSourceFiles();
@@ -1266,9 +1265,9 @@
                 
                 for (var i = 0; i < docsCount; i++)
                 {
-                    nameOfCurrentlyProcessed = this.openSquare(i);
+                    this.openSquare(i);
                     
-                    this.progressUi.updateProgress( percentComplete, app.activeDocument.name );
+                    this.progressUi.updateProgress( percentComplete, this.nameOfCurrentlyProcessed );
                     
                     this.processCurrentSquare(i);
                     
@@ -1292,6 +1291,7 @@
                     msgForUser = 'A problem occurred.';
                     
                 if (this.cancelledByInvalidInputPrefix === e.message.substring(0, this.cancelledByInvalidInputPrefix.length)) {
+                    // Invalid input
                     msgForUser = e.message.substring(this.cancelledByInvalidInputPrefix.length);
                     var isUserCancelled = true;
                     this.addWarningToAlertText('Invalid input', msgForUser, isUserCancelled);
@@ -1308,11 +1308,11 @@
                 }
             }
             
-            this.closeAllCurrentlyOpen();
-            
             if (this.progressUi) {
                 this.progressUi.closeProgress();
             }
+            
+            this.closeAllCurrentlyOpen();
             
             if (this.alertTextHasWarnings) {
                 var moreInfoFileStr = ''.concat("More information can be found in file:\n", "    ", Stdlib.log.fptr.toUIString());
@@ -1328,10 +1328,6 @@
             app.documents.add(6 * this.squareSide, this.squareSide, 72, this.tempDocumentName, NewDocumentMode.RGB);            
         },
         
-        /**
-         * @param {int} index
-         * @returns {String}
-         */
         openSquare: function(index) {
             var suffix = this.sourceFilesSuffixes[index],
                 fileRef = this.sourceFiles[suffix];
@@ -1344,9 +1340,11 @@
             }
             
             var current = app.activeDocument,
-                currentName = current.name,
                 currentHeight = getUnitValue(current.height),
                 currentWidth = getUnitValue(current.width);
+                
+            // Useful reference for updating progress indication
+            this.nameOfCurrentlyProcessed = current.name;
                 
             if (currentWidth !== currentHeight) {
                 this.throwInvalidInputException('Image file ' + fileRef.name + ' is not a square.');
@@ -1361,11 +1359,9 @@
                 
                 app.activeDocument = temp;
             }
-            else if (this.squareSide !== currentHeight) {
+            else if (this.squareSide !== currentHeight) {                
                 this.throwInvalidInputException('Building square ' + fileRef.name + ' has unexpected width.');
             }
-            
-            return currentName;
         },
         
         processCurrentSquare: function(index) {
