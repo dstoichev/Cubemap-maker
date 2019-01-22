@@ -634,7 +634,7 @@
               desktop = Folder("~");
             }
           
-            var folder = new Folder(desktop + "/CubemapMakererLog");
+            var folder = new Folder(desktop + "/CubemapMakerLog");
           
             if (!folder.exists) {
               folder.create();
@@ -1199,7 +1199,7 @@
                             // get the base name of output result
                             this.outputFileName = item.name.substring(0, result.index);
                         }
-                        cubeSide = result[2];
+                        cubeSide = result[2].toLowerCase();
                         if ('undefined' === typeof this.sourceFiles[cubeSide]) {
                             this.sourceFiles[cubeSide] = item;
                             foundCounter++;
@@ -1333,14 +1333,14 @@
          * @returns {String}
          */
         openSquare: function(index) {
-            var suffix = this.sourceFilesSuffixes[index];
-            var fileRef = this.sourceFiles[suffix];
+            var suffix = this.sourceFilesSuffixes[index],
+                fileRef = this.sourceFiles[suffix];
             
-            if (fileRef.exists) {
+            if (fileRef && fileRef.exists) {
                 app.open(fileRef);
             }
             else {
-                throw new Exception('Image file ' + fileRef.name + ' does not exists.');
+                throw new Error('Image file with suffix _' + suffix + ' does not exists.');
             }
             
             var current = app.activeDocument,
