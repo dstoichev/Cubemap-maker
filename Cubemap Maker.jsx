@@ -1185,7 +1185,9 @@
                         continue;
                     }
                     else if ('jpg' !== extension) {
-                        this.outputFileExtension = this.sourceFilesExtension = '.' + extension;
+                        //this.outputFileExtension = this.sourceFilesExtension = '.' + extension;
+                        this.sourceFilesExtension = '.' + extension;
+                        this.outputFileExtension = '.tif'; // Fix inconsistent extension saving behaviour
                         
                         this.saveOptions = new TiffSaveOptions();
                         this.saveOptions.layers = false;
