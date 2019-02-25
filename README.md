@@ -6,15 +6,15 @@ A Cubemap is a collection of six square textures that represent the reflections 
 The stereoscopic Cubemaps have two collections of six squares, for the left and the right eye respectively. 
 This script creates monoscopic Cubemap which is a collection of six squares.
 
-We have a group of six JPEG images in a folder. The script is given the path to this folder. It processes the images flipping them horizontally or vertically as needed and concats them in a strip.
+We have a group of six JPEG or TIFF images in a folder. The script is given the path to this folder. It processes the images flipping them horizontally or vertically as needed and concats them in a strip.
 
 The result is saved in the source folder.
 
-The JPEG images names must have the same base name with **_r**, **_l**, **_u**, **_d**, **_b** and **_f** suffixes for the **right**, **left**, **up**, **down**, **back** and **front** squares respectively.
+The JPEG/TIFF images names must have the same base name with **_r**, **_l**, **_u**, **_d**, **_b** and **_f** suffixes for the **right**, **left**, **up**, **down**, **back** and **front** squares respectively.
 
 ![Monoscopic Cubemap Layout explained](VR_Layout_Explained.jpg)
 
-The result is a JPEG image whose name is the base name with **_cubemap** suffix.
+The result is a JPEG image or TIFF image respectively whose name is the base name with **_cubemap** suffix.
 
 # To run the script:
  - Double click it
