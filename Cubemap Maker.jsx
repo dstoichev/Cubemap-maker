@@ -1052,7 +1052,7 @@
             
         this.opts = {
             sourcePath: Folder.myDocuments.fsName,
-            version: '1.0'
+            version: '1.1'
         };
         
         this.okTextlineFeed = "\n";        
@@ -1170,6 +1170,36 @@
             return fileRef;
         },
         
+        getFileExtensionAndSaveOptions: function(itemsInsideArray) {
+            var allowedExtensions = ['jpg', 'tif', 'tiff'],
+                item, namePartsArray, extension;
+            
+            for (var i = 0; i < itemsInsideArray.length; i++)
+            {
+                item = itemsInsideArray[i];
+                if (item instanceof File) {
+                    namePartsArray = item.name.split('.');
+                    extension = namePartsArray.pop();
+                    extension = extension.toLowerCase();
+                    if (-1 === allowedExtensions.indexOf(extension)) {
+                        continue;
+                    }
+                    else if ('jpg' !== extension) {
+                        this.outputFileExtension = this.sourceFilesExtension = '.' + extension;
+                        
+                        this.saveOptions = new TiffSaveOptions();
+                        this.saveOptions.layers = false;
+                        this.saveOptions.transparency = false;
+                        this.saveOptions.alphaChannels = false;
+                        this.saveOptions.embedColorProfile = false;
+                        this.saveOptions.imageCompression = TIFFEncoding.TIFFLZW;
+                        this.saveOptions.saveImagePyramid = false;
+                    }
+                    break;
+                }
+            }
+        },
+        
         getSourceFiles: function() {
             var sourceFolder = new Folder(this.opts.sourcePath),
                 itemsInsideArray = sourceFolder.getFiles();
@@ -1181,6 +1211,8 @@
             if (6 > itemsInsideArray.length) {
                 this.throwInvalidInputException('There must be at least 6 image files inside the source folder.');
             }
+            
+            this.getFileExtensionAndSaveOptions(itemsInsideArray);
             
             var item,
                 joinedSuffixes = this.sourceFilesSuffixes.join('|'),
